@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Agenda de Clases</title>
+
+<!-- Importamos el cliente oficial de Supabase para soportar Realtime -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+
+:root{
+    --azul:#1976d2;
+    --gris:#f4f6f9;
+}
+
+*{
+    box-sizing:border-box;
+}
+
+body{
+    margin:0;
+    background:var(--gris);
+    font-family:Segoe UI,Arial,sans-serif;
+}
+
+header{
+    background:var(--azul);
+    color:white;
+    text-align:center;
+    padding:18px;
+    font-size:1.4rem;
+    font-weight:bold;
+    position:sticky;
+    top:0;
+    z-index:1000;
+}
+
+.tabs{
+    display:flex;
+    background:white;
+    box-shadow:0 2px 5px rgba(0,0,0,.12);
+}
+
+.tabs button{
+    flex:1;
+    border:none;
+    background:white;
+    padding:14px;
+    font-size:16px;
+    cursor:pointer;
+}
+
+.tabs button.active{
+    border-bottom:4px solid var(--azul);
+    font-weight:bold;
+}
+
+.tab{
+    display:none;
+    padding:10px;
+}
+
+.tab.active{
+    display:block;
+}
+
+.card{
+    background:white;
+    border-radius:12px;
+    padding:12px;
+    margin-bottom:10px;
+    box-shadow:0 2px 8px rgba(0,0,0,.1);
+}
+
+.nombre{
+    font-size:20px;
+    font-weight:bold;
+    margin-bottom:6px;
+}
+
+.linea{
+    margin-top:6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.fechaGrupo{
+    background:white;
+    margin-top:14px;
+    margin-bottom:10px;
+    padding:10px 12px;
+    border-radius:12px;
+    box-shadow:0 2px 8px rgba(0,0,0,.08);
+}
+
+.fechaTituloContainer {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    border-bottom: 2px solid #eef2f7;
+    padding-bottom: 6px;
+    margin-bottom: 8px;
+}
+
+.fechaTitulo{
+    font-size:1rem;
+    font-weight:bold;
+    color:#0d47a1;
+}
+
+.fechaRelativa{
+    color:#666;
+    font-size:.85rem;
+}
+
+/* Estilos para tabla compacta en Próximas */
+.tabla-proximas {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.tabla-proximas tr:not(:last-child) {
+    border-bottom: 1px solid #f0f2f5;
+}
+
+.tabla-proximas td {
+    padding: 8px 4px;
+    vertical-align: middle;
+}
+
+.col-hora {
+    white-space: nowrap;
+    font-weight: 600;
+    color: #333;
+    width: 22%;
+}
+
+.col-info {
+    width: 58%;
+}
+
+.col-info .profesor {
+    font-weight: bold;
+    color: #222;
+}
+
+.col-info .detalle {
+    font-size: 0.8rem;
+    color: #555;
+    margin-top: 3px;
+}
+
+.col-badge {
+    text-align: right;
+    width: 20%;
+}
+
+.tiempoHoy{
+    color:#1565c0;
+    font-weight:bold;
+    margin-bottom:8px;
+}
+
+/* Indicador visual de bache/traslado entre clases */
+.badge-traslado {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #fff8e1;
+    color: #f57f17;
+    border: 1px solid #ffe082;
+    padding: 3px 8px;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-top: 6px;
+}
+
+/* Indicador visual de clase inmediata / consecutiva */
+.badge-inmediata {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #e3f2fd;
+    color: #1565c0;
+    border: 1px solid #bbdefb;
+    padding: 3px 8px;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-top: 6px;
+}
+
+.badge{
+    display:inline-block;
+    border-radius:12px;
+    padding:3px 8px;
+    font-size:.75rem;
+    font-weight: 500;
+}
+
+.virtual{
+    background:#ede7f6;
+    color:#5e35b1;
+}
+
+.presencial{
+    background:#e8f5e9;
+    color:#2e7d32;
+}
+
+/* Botones de acción rápida */
+.btn-accion {
+    background: #f0f4f8;
+    border: none;
+    border-radius: 6px;
+    padding: 3px 7px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    color: #333;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: background 0.2s;
+}
+
+.btn-accion:hover {
+    background: #e2e8f0;
+}
+
+.btn-wsp-icon {
+    background: #25D366;
+    border-radius: 50%;
+    width: 26px;
+    height: 26px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    transition: transform 0.2s, background 0.2s;
+}
+
+.btn-wsp-icon:hover {
+    background: #20ba5a;
+    transform: scale(1.08);
+}
+
+.wsp-svg {
+    width: 15px;
+    height: 15px;
+    fill: white;
+}
+
+a{
+    text-decoration:none;
+    color: inherit;
+}
+
+.loading{
+    text-align:center;
+    padding:20px;
+}
+
+</style>
+</head>
+
+<body>
+
+<header>
+📚 Agenda de Clases
+</header>
+
+<div class="tabs">
+    <button id="btnHoy" class="active">HOY</button>
+    <button id="btnProximas">PRÓXIMAS</button>
+</div>
+
+<div id="tabHoy" class="tab active">
+    <div class="loading">Cargando...</div>
+</div>
+
+<div id="tabProximas" class="tab">
+    <div class="loading">Cargando...</div>
+</div>
+
+<script>
+
+const SUPABASE_URL = "https://ptsiaaxjomyekqqyavld.supabase.co";
+const API_KEY = "sb_publishable_ayD3FBBUE2YdSysCgLiMrw_l6Kp9Ofe";
+
+// Inicializamos el cliente de Supabase para consultas y Realtime
+const supabaseClient = supabase.createClient(SUPABASE_URL, API_KEY);
+
+const SVG_WHATSAPP = `<svg class="wsp-svg" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>`;
+
+btnHoy.onclick = () => mostrarTab("hoy");
+btnProximas.onclick = () => mostrarTab("proximas");
+
+function mostrarTab(tab){
+    document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
+    document.querySelectorAll(".tabs button").forEach(x=>x.classList.remove("active"));
+
+    if(tab==="hoy"){
+        tabHoy.classList.add("active");
+        btnHoy.classList.add("active");
+    } else {
+        tabProximas.classList.add("active");
+        btnProximas.classList.add("active");
+    }
+}
+
+function obtenerFechaLocal() {
+    const ahora = new Date();
+    const anio = ahora.getFullYear();
+    const mes = String(ahora.getMonth() + 1).padStart(2, '0');
+    const dia = String(ahora.getDate()).padStart(2, '0');
+    return `${anio}-${mes}-${dia}`;
+}
+
+function tiempoHoy(horaInicio,horaFin){
+    const ahora = new Date();
+    const fechaStr = obtenerFechaLocal();
+
+    const inicio = new Date(fechaStr + "T" + horaInicio + ":00");
+    const fin = new Date(fechaStr + "T" + horaFin + ":00");
+
+    if(ahora >= inicio && ahora <= fin){
+        return "🟢 Clase en curso";
+    }
+
+    if(ahora < inicio){
+        let minutos = Math.round((inicio-ahora)/60000);
+        if(minutos < 60) return `🟢 Dentro de ${minutos} min`;
+        let horas = Math.floor(minutos/60);
+        minutos = minutos % 60;
+        return `🟢 Dentro de ${horas} h ${minutos} min`;
+    }
+
+    let minutos = Math.round((ahora-fin)/60000);
+    if(minutos < 60) return `🔴 Terminó hace ${minutos} min`;
+    let horas = Math.floor(minutos/60);
+    minutos = minutos % 60;
+    return `🔴 Terminó hace ${horas} h ${minutos} min`;
+}
+
+function tiempoProximas(fecha){
+    const partes = fecha.split("-");
+    const destino = new Date(Number(partes[0]), Number(partes[1]) - 1, Number(partes[2]));
+    const hoy = new Date();
+
+    hoy.setHours(0,0,0,0);
+    destino.setHours(0,0,0,0);
+
+    const dias = Math.round((destino - hoy) / 86400000);
+
+    if(dias === 1) return "Mañana";
+    if(dias < 7) return `Dentro de ${dias} días`;
+    const semanas = Math.floor(dias / 7);
+    if(semanas === 1) return "Dentro de 1 semana";
+    return `Dentro de ${semanas} semanas`;
+}
+
+function obtenerIndicadorConsecutiva(horaFinActual, horaInicioSiguiente) {
+    if (!horaFinActual || !horaInicioSiguiente) return null;
+    
+    const [hFin, mFin] = horaFinActual.split(':').map(Number);
+    const [hSig, mSig] = horaInicioSiguiente.split(':').map(Number);
+    
+    const totalMinutosFin = hFin * 60 + mFin;
+    const totalMinutosSig = hSig * 60 + mSig;
+    
+    const diffMinutos = totalMinutosSig - totalMinutosFin;
+    
+    if (diffMinutos >= 0 && diffMinutos <= 5) {
+        return { tipo: 'inmediata', texto: 'Próxima Clase: Inmediata ⏩' };
+    }
+    
+    if (diffMinutos > 5 && diffMinutos < 480) {
+        const horas = Math.floor(diffMinutos / 60);
+        const mins = diffMinutos % 60;
+        let detalle = '';
+        if (horas > 0 && mins > 0) detalle = `${horas}h ${mins}min`;
+        else if (horas > 0) detalle = `${horas}h`;
+        else detalle = `${mins} min`;
+        
+        return { tipo: 'traslado', texto: `⏱️ Traslado/Brecha: ${detalle}` };
+    }
+    
+    return null;
+}
+
+function copiarAlPortapapeles(texto, btnElement) {
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(texto).then(() => {
+            mostrarFeedback(btnElement);
+        }).catch(() => {
+            copiarFallback(texto, btnElement);
+        });
+    } else {
+        copiarFallback(texto, btnElement);
+    }
+}
+
+function copiarFallback(texto, btnElement) {
+    const textArea = document.createElement("textarea");
+    textArea.value = texto;
+    textArea.style.position = "fixed";
+    textArea.style.top = "0";
+    textArea.style.left = "0";
+    textArea.style.opacity = "0";
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    try {
+        document.execCommand('copy');
+        mostrarFeedback(btnElement);
+    } catch (err) {
+        console.error("Error al copiar: ", err);
+    }
+    document.body.removeChild(textArea);
+}
+
+function mostrarFeedback(btnElement) {
+    const originalText = btnElement.innerHTML;
+    btnElement.innerHTML = "✅ ¡Copiado!";
+    setTimeout(() => {
+        btnElement.innerHTML = originalText;
+    }, 2000);
+}
+
+function formatearNumeroWhatsApp(telefono) {
+    if (!telefono) return "";
+    let tel = telefono.replace(/\D/g, '');
+    if (tel.startsWith('0')) {
+        tel = '598' + tel.substring(1);
+    } else if (!tel.startsWith('598') && tel.length === 8) {
+        tel = '598' + tel;
+    }
+    return tel;
+}
+
+function generarEnlaceWhatsApp(telefono) {
+    const numFormateado = formatearNumeroWhatsApp(telefono);
+    if (!numFormateado) return "#";
+    const esAndroid = /Android/i.test(navigator.userAgent);
+    if (esAndroid) {
+        return `intent://send?phone=${numFormateado}#Intent;package=com.whatsapp.w4b;scheme=whatsapp;end;`;
+    } else {
+        return `https://wa.me/${numFormateado}`;
+    }
+}
+
+async function cargarHoy(){
+    const fechaHoy = obtenerFechaLocal();
+    const { data: datos, error } = await supabaseClient
+        .from("proximas_clases")
+        .select("*")
+        .eq("fecha", fechaHoy)
+        .order("hora_desde", { ascending: true });
+
+    if (error) throw error;
+
+    const cont = document.getElementById("tabHoy");
+    cont.innerHTML="";
+
+    if(!datos || datos.length === 0){
+        cont.innerHTML = `<div class="card" style="text-align:center; color:#666;">No hay clases programadas para hoy.</div>`;
+        return;
+    }
+
+    datos.forEach((x, index) => {
+        const nombreCompleto = `${x.nombres || ''} ${x.apellidos || ''}`.trim();
+        const direccionClase = x.direccion || "";
+        const telefonoAlumno = x.telefono || "";
+        const wspLink = generarEnlaceWhatsApp(telefonoAlumno);
+
+        let infoConsecutiva = null;
+        if (index < datos.length - 1) {
+            const claseSiguiente = datos[index + 1];
+            infoConsecutiva = obtenerIndicadorConsecutiva(x.hora_hasta, claseSiguiente.hora_desde);
+        }
+
+        const maps = direccionClase 
+            ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(direccionClase)}` 
+            : "#";
+
+        const dirEscapes = direccionClase.replace(/'/g, "\\'");
+
+        cont.innerHTML += `
+        <div class="card">
+            <div class="tiempoHoy" id="tiempo-hoy-${index}" data-inicio="${x.hora_desde}" data-fin="${x.hora_hasta}">
+                ${tiempoHoy(x.hora_desde, x.hora_hasta)}
+            </div>
+
+            <div class="nombre">
+                ${nombreCompleto}
+            </div>
+
+            <div class="linea">
+                ⏰ ${x.hora_desde} - ${x.hora_hasta}
+            </div>
+
+            <div class="linea">
+                📖 ${x.asignatura} (Año ${x.ano ?? ""})
+            </div>
+
+            ${telefonoAlumno ? `
+            <div class="linea" style="gap: 8px;">
+                📞 <a href="tel:${telefonoAlumno}" style="color:#1976d2; font-weight:600; text-decoration:underline;">${telefonoAlumno}</a>
+                <a href="${wspLink}" class="btn-wsp-icon" target="_blank" title="Abrir en WhatsApp Business">
+                    ${SVG_WHATSAPP}
+                </a>
+            </div>` : ''}
+
+            ${direccionClase ? `
+            <div class="linea">
+                📍 <a href="${maps}" target="_blank" style="color:#1976d2; text-decoration:underline;">${direccionClase}</a>
+                <button class="btn-accion" onclick="copiarAlPortapapeles('${dirEscapes}', this)">
+                    📋 Copiar
+                </button>
+            </div>` : ''}
+
+            <div class="badge ${x.modalidad==="Virtual" ? "virtual" : "presencial"}">
+                ${x.modalidad}
+            </div>
+
+            ${infoConsecutiva ? `
+            <div>
+                <span class="${infoConsecutiva.tipo === 'inmediata' ? 'badge-inmediata' : 'badge-traslado'}">
+                    ${infoConsecutiva.texto}
+                </span>
+            </div>` : ''}
+        </div>`;
+    });
+}
+
+async function cargarProximas(){
+    const fechaHoy = obtenerFechaLocal();
+    const { data: datos, error } = await supabaseClient
+        .from("proximas_clases")
+        .select("*")
+        .gt("fecha", fechaHoy)
+        .order("fecha", { ascending: true })
+        .order("hora_desde", { ascending: true });
+
+    if (error) throw error;
+
+    const cont = document.getElementById("tabProximas");
+    cont.innerHTML="";
+
+    if(!datos || datos.length === 0){
+        cont.innerHTML = `<div class="card" style="text-align:center; color:#666;">No hay próximas clases programadas.</div>`;
+        return;
+    }
+
+    let fechaActual = "";
+    let htmlGrupos = "";
+
+    datos.forEach((x, index) => {
+        const nombreCompleto = `${x.nombres || ''} ${x.apellidos || ''}`.trim();
+        const direccionClase = x.direccion || "";
+        const telefonoAlumno = x.telefono || "";
+        const wspLink = generarEnlaceWhatsApp(telefonoAlumno);
+        
+        let infoConsecutiva = null;
+        if (index < datos.length - 1) {
+            const claseSiguiente = datos[index + 1];
+            if (claseSiguiente.fecha === x.fecha) {
+                infoConsecutiva = obtenerIndicadorConsecutiva(x.hora_hasta, claseSiguiente.hora_desde);
+            }
+        }
+
+        const maps = direccionClase 
+            ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(direccionClase)}` 
+            : "#";
+
+        const dirEscapes = direccionClase.replace(/'/g, "\\'");
+
+        if(fechaActual !== x.fecha){
+            if(fechaActual !== ""){
+                htmlGrupos += `</table></div>`; 
+            }
+            fechaActual = x.fecha;
+            htmlGrupos += `
+            <div class="fechaGrupo">
+                <div class="fechaTituloContainer">
+                    <span class="fechaTitulo">${x.dia} ${x.fecha}</span>
+                    <span class="fechaRelativa">${tiempoProximas(x.fecha)}</span>
+                </div>
+                <table class="tabla-proximas">`;
+        }
+
+        htmlGrupos += `
+            <tr>
+                <td class="col-hora">⏰ ${x.hora_desde}<br><small style="color:#777">a ${x.hora_hasta}</small></td>
+                <td class="col-info">
+                    <div class="profesor">${nombreCompleto}</div>
+                    <div class="detalle">📖 ${x.asignatura} • 🎓 Año ${x.ano}</div>
+                    ${telefonoAlumno ? `
+                        <div class="detalle" style="display:flex; align-items:center; gap:8px; margin-top:4px;">
+                            📞 <a href="tel:${telefonoAlumno}" style="color:#1976d2; text-decoration:underline; font-weight:600;">${telefonoAlumno}</a>
+                            <a href="${wspLink}" class="btn-wsp-icon" target="_blank" title="Abrir en WhatsApp Business">
+                                ${SVG_WHATSAPP}
+                            </a>
+                        </div>` : ''}
+                    ${direccionClase ? `
+                        <div class="detalle" style="margin-top:4px;">
+                            📍 <a href="${maps}" target="_blank" style="color:#1976d2; text-decoration:underline;">${direccionClase}</a>
+                            <button class="btn-accion" style="padding: 1px 4px; font-size: 0.7rem; margin-left: 4px;" onclick="copiarAlPortapapeles('${dirEscapes}', this)">📋 Copiar</button>
+                        </div>` : ''}
+                    ${infoConsecutiva ? `
+                        <div class="detalle" style="margin-top: 5px;">
+                            <span class="${infoConsecutiva.tipo === 'inmediata' ? 'badge-inmediata' : 'badge-traslado'}">
+                                ${infoConsecutiva.texto}
+                            </span>
+                        </div>` : ''}
+                </td>
+                <td class="col-badge">
+                    <span class="badge ${x.modalidad === "Virtual" ? "virtual" : "presencial"}">
+                        ${x.modalidad}
+                    </span>
+                </td>
+            </tr>`;
+        
+        if(index === datos.length - 1){
+            htmlGrupos += `</table></div>`;
+        }
+    });
+
+    cont.innerHTML = htmlGrupos;
+}
+
+function actualizarTiemposEnVivo() {
+    const elementosTiempo = document.querySelectorAll(".tiempoHoy");
+    elementosTiempo.forEach(el => {
+        const inicio = el.getAttribute("data-inicio");
+        const fin = el.getAttribute("data-fin");
+        if(inicio && fin) {
+            el.textContent = tiempoHoy(inicio, fin);
+        }
+    });
+}
+
+async function iniciar(){
+    try{
+        await cargarHoy();
+        await cargarProximas();
+        setInterval(actualizarTiemposEnVivo, 60000);
+
+        // CONFIGURACIÓN DE SUPABASE REALTIME
+        // Escucha cualquier cambio (INSERT, UPDATE, DELETE) en la tabla proximas_clases
+        supabaseClient
+            .channel('public:proximas_clases')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'proximas_clases' }, payload => {
+                console.log('Cambio detectado en tiempo real:', payload);
+                cargarHoy();
+                cargarProximas();
+            })
+            .subscribe();
+
+    }
+    catch(ex){
+        document.body.innerHTML += `<div style="padding:20px;color:red">${ex}</div>`;
+        console.error(ex);
+    }
+}
+
+iniciar();
+
+</script>
+
+</body>
+</html>
